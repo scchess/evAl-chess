@@ -66,8 +66,23 @@ def _piece_lists(position):
     for i in range(8):
         for j in range(8):
             piece = position.piece_at(64 - 8 * (i + 1) + j)
+
             if piece is not None:
-                piece_coords[piece.symbol()].append((i, j))
+                piece_color = piece.color
+                min_attacker_and_defender = tuple([
+                    min(
+                        (
+                            position.piece_type_at(square)
+                            for square in position.attackers(
+                                color,
+                                64 - 8 * (i + 1) + j
+                            )
+                        ),
+                        default=0
+                    )
+                    for color in ((chess.BLACK, chess.WHITE) if piece_color == chess.WHITE else (chess.WHITE, chess.BLACK))
+                ])
+                piece_coords[piece.symbol()].append((i, j) + min_attacker_and_defender)
     return [
         element
         for piece in pieces
@@ -96,7 +111,6 @@ def _attack_and_defend_maps(position):
         for i in range(8)
         for j in range(8)
     ]
-
 
 
 def get_position_features(position):
