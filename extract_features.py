@@ -57,18 +57,12 @@ def _material_configuration(position):
 def _piece_lists(position):
     # There are things in life that you should just take for granted. Do
     # yourself a favor and save me the shame and skip over this method.
-    pieces = [
-        'P', 'N', 'B', 'R', 'Q', 'K',
-        'p', 'n', 'b' ,'r', 'q', 'k'
-    ]
+    pieces = ['P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b' ,'r', 'q', 'k']
     piece_freqs = {
         'P' : 8, 'N' : 2, 'B' : 2, 'R' : 2, 'Q' : 2, 'K' : 1,
         'p' : 8, 'n' : 2, 'b' : 2 ,'r' : 2, 'q' : 2, 'k' : 1
     }
-    piece_coords = {
-        piece : []
-        for piece in pieces
-    }
+    piece_coords = { piece : [] for piece in pieces }
     for i in range(8):
         for j in range(8):
             piece = position.piece_at(64 - 8 * (i + 1) + j)
@@ -77,8 +71,8 @@ def _piece_lists(position):
     return [
         element
         for piece in pieces
-        for coord in piece_coords[piece] + [(0, 0)] * (piece_freqs[piece] - len(piece_coords[piece]))
-        for element in coord
+        for coord in piece_coords[piece] + [(-1, -1)] * (piece_freqs[piece] - len(piece_coords[piece]))
+        for element in coord + (coord != (-1, -1),)
     ]
 
 
@@ -87,7 +81,22 @@ def _sliding_pieces_mobility(position):
 
 
 def _attack_and_defend_maps(position):
-    return []
+    return [
+        min(
+            (
+                position.piece_type_at(square)
+                for square in position.attackers(
+                    color,
+                    64 - 8 * (i + 1) + j
+                )
+            ),
+            default=0
+        )
+        for color in (chess.WHITE, chess.BLACK)
+        for i in range(8)
+        for j in range(8)
+    ]
+
 
 
 def get_position_features(position):
