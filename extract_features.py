@@ -26,8 +26,10 @@ def get_engine_eval(game_node):
         assert len(engine_eval) == 1, 'Using `re.findall` won\'t work.'
         return engine_eval[0]
 
+
 def _side_to_move(position):
     return [position.turn]
+
 
 def _castling_rights(position):
     return [
@@ -36,6 +38,7 @@ def _castling_rights(position):
         position.has_queenside_castling_rights(chess.WHITE),
         position.has_queenside_castling_rights(chess.BLACK)
     ]
+
 
 def _material_configuration(position):
     # The first field of the FEN representation of the position. To count
@@ -50,14 +53,42 @@ def _material_configuration(position):
         ]
     ]
 
+
 def _piece_lists(position):
-    return []
+    # There are things in life that you should just take for granted. Do
+    # yourself a favor and save me the shame and skip over this method.
+    pieces = [
+        'P', 'N', 'B', 'R', 'Q', 'K',
+        'p', 'n', 'b' ,'r', 'q', 'k'
+    ]
+    piece_freqs = {
+        'P' : 8, 'N' : 2, 'B' : 2, 'R' : 2, 'Q' : 2, 'K' : 1,
+        'p' : 8, 'n' : 2, 'b' : 2 ,'r' : 2, 'q' : 2, 'k' : 1
+    }
+    piece_coords = {
+        piece : []
+        for piece in pieces
+    }
+    for i in range(8):
+        for j in range(8):
+            piece = position.piece_at(64 - 8 * (i + 1) + j)
+            if piece is not None:
+                piece_coords[piece.symbol()].append((i, j))
+    return [
+        element
+        for piece in pieces
+        for coord in piece_coords[piece] + [(0, 0)] * (piece_freqs[piece] - len(piece_coords[piece]))
+        for element in coord
+    ]
+
 
 def _sliding_pieces_mobility(position):
     return []
 
+
 def _attack_and_defend_maps(position):
     return []
+
 
 def get_position_features(position):
     features = (
