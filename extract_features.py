@@ -10,6 +10,11 @@ chess.PIECES = [
     'p', 'n', 'b' ,'r', 'q', 'k'
 ]
 
+chess.PIECE_FREQS = {
+    'P' : 8, 'N' : 3, 'B' : 2, 'R' : 2, 'Q' : 2, 'K' : 1,
+    'p' : 8, 'n' : 3, 'b' : 2, 'r' : 2, 'q' : 2, 'k' : 1
+}
+
 def __all_pseudo_legal_moves(self):
     # `Board.pseudo_legal_moves` yields the moves only for the side to
     # play. Change the side to play and append the opposing sides' moves
@@ -29,6 +34,9 @@ def _side_to_move(position):
 
     Number of features contributed: 1.
     '''
+    print('Side to move')
+    print([position.turn])
+    print()
     return [position.turn]
 
 
@@ -38,6 +46,14 @@ def _castling_rights(position):
 
     Number of features contributed: 4.
     '''
+    print('Castling rights')
+    print([
+        position.has_kingside_castling_rights(chess.WHITE),
+        position.has_kingside_castling_rights(chess.BLACK),
+        position.has_queenside_castling_rights(chess.WHITE),
+        position.has_queenside_castling_rights(chess.BLACK)
+    ])
+    print()
     return [
         position.has_kingside_castling_rights(chess.WHITE),
         position.has_kingside_castling_rights(chess.BLACK),
@@ -56,6 +72,12 @@ def _material_configuration(position):
     # the number of each piece in the position, simply count the frequency
     # of its corresponding letter in `board_fen`.
     board_fen = position.board_fen()
+    print('Material Config')
+    print([
+        board_fen.count(piece)
+        for piece in chess.PIECES
+    ])
+    print()
     return [
         board_fen.count(piece)
         for piece in chess.PIECES
@@ -86,12 +108,34 @@ def _piece_lists(position):
     you're somehow in a position where you need to underpromote a pawn in the
     opening or middlegame.
     '''
-
-    # Warning: very ugly code.
+    ###########################################
     piece_on_board = (
         square != chess.MISSING_PIECE_SQUARE
         for square in position.piece_squares
     )
+    a = [
+        element
+        for square in position.piece_squares
+        for element in (
+            (-1, -1, next(piece_on_board), -1, -1)
+            if square == chess.MISSING_PIECE_SQUARE
+            else (
+                _to_coord(square)
+                + (next(piece_on_board), )
+                + (
+                    position.min_attacker_of[square]
+                    if position.piece_at(square).color == chess.WHITE
+                    else tuple(reversed(position.min_attacker_of[square]))
+                )
+            )
+        )
+    ]
+    for i in range(len(a) // 5):
+        for j in range(5):
+            print(a[i * 5 + j], end=' ')
+        print()
+    print()
+    ###########################################
 
     piece_on_board = (
         square != chess.MISSING_PIECE_SQUARE
@@ -129,55 +173,81 @@ def _direction(from_square, to_square):
 def _sliding_pieces_mobility(position):
     '''
     How far each {white, black} {bishop, rook, queen} can slide in each
-    applicable direction.
+    applicable direction d.
     '''
+    up_down, diag = (0, 2, 4, 6), (1, 3, 5, 7)
     sliding_pieces = ('B', 'R', 'Q', 'b', 'r', 'q')
-
-
-    mobilities = {
-        sliding_piece : []
-        for sliding_piece in sliding_pieces
+    movable_dirs = {
+        'B' : diag,
+        'R' : up_down,
+        'Q' : up_down + diag,
+        'b' : diag,
+        'r' : up_down,
+        'q' : up_down + diag
     }
+
+    legal_move_dirs = { }
     for move in position.all_pseudo_legal_moves():
         piece = position.piece_at(move.from_square).symbol()
         if piece in sliding_pieces:
-            mobilities[piece].append(_direction(move.from_square, move.to_square))
+            if (piece, move.from_square) not in legal_move_dirs:
+                legal_move_dirs[(piece, move.from_square)] = []
+            legal_move_dirs[(piece, move.from_square)].append(
+                _direction(move.from_square, move.to_square)
+            )
 
+
+    mobilities = []
+    for sliding_piece in sliding_pieces:
+        found = [val for (piece, from_square), val in legal_move_dirs.items() if piece == sliding_piece]
+        n_found, n_missing = len(found), chess.PIECE_FREQS[sliding_piece] - len(found)
+        for val in found:
+            for movable_dir in movable_dirs[sliding_piece]:
+                mobilities.append(val.count(movable_dir))
+        mobilities += [-1] * len(movable_dirs[sliding_piece]) * n_missing
+
+
+    print('Sliding pieces mobility')
     print(mobilities)
-    return []
+    print()
+
+    return mobilities
 
 
 def _attack_and_defend_maps(position):
+    print('Attack and defend maps')
+    print(np.reshape([
+        position.min_attacker_of[square][color]
+        for color in (chess.WHITE, chess.BLACK)
+        for square in chess.SQUARES_180
+    ], (16, 8)))
+    print()
     return [
         position.min_attacker_of[square][color]
         for color in (chess.WHITE, chess.BLACK)
-        for square in chess.SQUARES
+        for square in chess.SQUARES_180
     ]
 
 def _init_square_data(position):
 
     piece_squares = { piece : [] for piece in chess.PIECES }
-    for square in np.random.permutation(chess.SQUARES):
+    for square in chess.SQUARES:
         piece = position.piece_at(square)
         if piece is not None:
             piece_squares[piece.symbol()].append(square)
 
-    piece_freqs = {
-        'P' : 8, 'N' : 3, 'B' : 2, 'R' : 2, 'Q' : 2, 'K' : 1,
-        'p' : 8, 'n' : 3, 'b' : 2, 'r' : 2, 'q' : 2, 'k' : 1
-    }
 
     chess.MISSING_PIECE_SQUARE = -1
     for piece in chess.PIECES:
         piece_squares[piece] += (
             [chess.MISSING_PIECE_SQUARE]
-            * (piece_freqs[piece] - len(piece_squares[piece]))
+            * (chess.PIECE_FREQS[piece] - len(piece_squares[piece]))
         )
 
     position.piece_squares = [
         square
         for piece in chess.PIECES
-        for square in piece_squares[piece]
+        for square in np.random.permutation(piece_squares[piece])
     ]
 
     position.min_attacker_of = {
@@ -193,7 +263,6 @@ def _init_square_data(position):
         )
         for square in chess.SQUARES
     }
-
 
 
 def get_position_features(position):
