@@ -1,5 +1,6 @@
 import extract_features
 import chess.pgn
+import re
 
 
 # (I thank you with all my heart, python-chess documentation.)
@@ -35,7 +36,7 @@ def get_engine_eval(game_node):
     else:
         assert len(engine_eval) == 1
         return engine_eval[0]
-        
+
 
 # Iterate through every game in the archive.
 curr_game = chess.pgn.read_game(tcec_2015_archive)
@@ -54,11 +55,12 @@ while curr_game is not None:
             else curr_game.headers['Black']
         )
         # What that engine evaluated this position to be.
-        engine_eval = extract_features.get_engine_eval(curr_game_node)
-        print(engine_name, engine_eval)
-        print(curr_game_node.board(), end='\n\n')
+        engine_eval = get_engine_eval(curr_game_node)
 
+        print(curr_game_node.board())
+        print(engine_name, engine_eval)
         print(extract_features.get_position_features(curr_game_node.board()))
+        print()
 
         # Set curr_game_node to the next position in the game. If it's the
         # end of the game, set it to None.
