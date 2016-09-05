@@ -103,14 +103,6 @@ def _piece_lists(position):
         square != chess.MISSING_PIECE_SQUARE
         for square in position.piece_squares
     )
-    for square in position.piece_squares:
-        if square == chess.MISSING_PIECE_SQUARE:
-            print((-1, -1, next(piece_on_board), -1, 1))
-        else:
-            print(_to_coord(square) + (next(piece_on_board), )
-                + position.min_attacker_of[square]
-            )
-
 
     piece_on_board = (
         square != chess.MISSING_PIECE_SQUARE
