@@ -7,21 +7,6 @@ chess.PIECES = [
     'p', 'n', 'b' ,'r', 'q', 'k'
 ]
 
-def get_engine_eval(game_node):
-    '''
-    Returns what the engine evaluated the position in `game_node` to be;
-    returns None if the move played was taken from the book.
-
-    The returned evaluation is bh the engine that played the move that
-    immediately led to `game_node`; the TCEC updates the engines' evaluations
-    only after moves they play.
-    '''
-
-    # TCEC's pgn files log engine information such as time remaining
-    # and depth searched for each move played. `python-chess`, when parsing
-    # the pgn files, considers this information to be the `comment` of each
-    # move.
-    comment = game_node.comment
 
     # Search for floats in `comment`. No other piece of information logged
     # by the TCEC comes in the form of a float, so this yields the evaluation.
