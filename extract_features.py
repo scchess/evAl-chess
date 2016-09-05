@@ -2,6 +2,11 @@ import chess
 import re
 import numpy as np
 
+chess.PIECES = [
+    'P', 'N', 'B', 'R', 'Q', 'K',
+    'p', 'n', 'b' ,'r', 'q', 'k'
+]
+
 def get_engine_eval(game_node):
     '''
     Returns what the engine evaluated the position in `game_node` to be;
@@ -64,10 +69,7 @@ def _material_configuration(position):
     board_fen = position.board_fen()
     return [
         board_fen.count(piece)
-        for piece in [
-            'P', 'N', 'B', 'R', 'Q', 'K',
-            'p', 'n', 'b' ,'r', 'q', 'k'
-        ]
+        for piece in chess.PIECES
     ]
 
 def _to_coord(square):
@@ -76,19 +78,6 @@ def _to_coord(square):
     '''
     return (8 - square // 8 - 1, square % 8)
 
-
-def _get_min_attacker(position, color, square):
-    '''
-    The value of the minimum-valued attacker of `square`; 0 if `square` is
-    not attacked by any piece.
-    '''
-    return min(
-        (
-            position.piece_type_at(square)
-            for square in position.attackers(color, square)
-        ),
-        default=0
-    )
 
 def _piece_lists(position):
     '''
@@ -110,59 +99,33 @@ def _piece_lists(position):
     '''
 
     # Warning: very ugly code.
-
-    pieces = [
-        'P', 'N', 'B', 'R', 'Q', 'K',
-        'p', 'n', 'b' ,'r', 'q', 'k'
-    ]
-
-    piece_freqs = {
-        'P' : 8, 'N' : 3, 'B' : 2, 'R' : 2, 'Q' : 2, 'K' : 1,
-        'p' : 8, 'n' : 3, 'b' : 2, 'r' : 2, 'q' : 2, 'k' : 1
-    }
-
-    piece_squares = { piece : [] for piece in pieces }
-    piece_min_attacker_and_defender = {}
-
-    SQUARES_COL_ORDERED = (
-        np.reshape(chess.SQUARES, (8, 8))
-        .transpose()
-        .flatten()
-        .tolist()
+    piece_on_board = (
+        square != chess.MISSING_PIECE_SQUARE
+        for square in position.piece_squares
     )
-    for square in SQUARES_COL_ORDERED:
-        piece = position.piece_at(square)
-        if piece is not None:
-            piece_squares[piece.symbol()].append(square)
-            piece_min_attacker_and_defender[square] = tuple(
-                _get_min_attacker(position, color, square)
-                for color in (not piece.color, piece.color)
+    for square in position.piece_squares:
+        if square == chess.MISSING_PIECE_SQUARE:
+            print((-1, -1, next(piece_on_board), -1, 1))
+        else:
+            print(_to_coord(square) + (next(piece_on_board), )
+                + position.min_attacker_of[square]
             )
 
-    square_of_missing_piece = (-1, -1)
-    for piece in pieces:
-        piece_squares[piece] += (
-            [square_of_missing_piece]
-            * (piece_freqs[piece] - len(piece_squares[piece]))
-        )
 
     piece_on_board = (
-        square != square_of_missing_piece
-        for piece in pieces
-        for square in piece_squares[piece]
+        square != chess.MISSING_PIECE_SQUARE
+        for square in position.piece_squares
     )
-
     return [
         element
-        for piece in pieces
-        for square in piece_squares[piece]
+        for square in position.piece_squares
         for element in (
             (-1, -1, next(piece_on_board), -1, 1)
-            if square == square_of_missing_piece
+            if square == chess.MISSING_PIECE_SQUARE
             else (
                 _to_coord(square)
                 + (next(piece_on_board), )
-                + piece_min_attacker_and_defender[square]
+                + position.min_attacker_of[square]
             )
         )
     ]
@@ -174,7 +137,10 @@ def _sliding_pieces_mobility(position):
     direction.
     '''
     # TODO: Refactor. Code taken from `_piece_lists()`.
-    sliding_pieces = ('B', 'R', 'Q', 'b', 'r', 'q')
+    sliding_pieces = (
+        'B', 'R', 'Q',
+        'b', 'r', 'q'
+    )
     sliding_piece_squares = { piece : [] for piece in sliding_pieces }
 
     for square in chess.SQUARES:
@@ -204,12 +170,55 @@ def _sliding_pieces_mobility(position):
 
 def _attack_and_defend_maps(position):
     return [
-        _get_min_attacker(position, color, square)
+        position.min_attacker_of[square][color]
         for color in (chess.WHITE, chess.BLACK)
         for square in chess.SQUARES
     ]
 
+def _init_square_data(position):
+
+    piece_squares = { piece : [] for piece in chess.PIECES }
+    for square in np.random.permutation(chess.SQUARES):
+        piece = position.piece_at(square)
+        if piece is not None:
+            piece_squares[piece.symbol()].append(square)
+
+    piece_freqs = {
+        'P' : 8, 'N' : 3, 'B' : 2, 'R' : 2, 'Q' : 2, 'K' : 1,
+        'p' : 8, 'n' : 3, 'b' : 2, 'r' : 2, 'q' : 2, 'k' : 1
+    }
+
+    chess.MISSING_PIECE_SQUARE = -1
+    for piece in chess.PIECES:
+        piece_squares[piece] += (
+            [chess.MISSING_PIECE_SQUARE]
+            * (piece_freqs[piece] - len(piece_squares[piece]))
+        )
+
+    position.piece_squares = [
+        square
+        for piece in chess.PIECES
+        for square in piece_squares[piece]
+    ]
+
+    position.min_attacker_of = {
+        square : tuple(
+            min(
+                (
+                    position.piece_type_at(square)
+                    for square in position.attackers(color, square)
+                ),
+                default=0
+            )
+            for color in (chess.WHITE, chess.BLACK)
+        )
+        for square in chess.SQUARES
+    }
+
+
+
 def get_position_features(position):
+    _init_square_data(position)
     features = (
         []
         + _side_to_move(position)
