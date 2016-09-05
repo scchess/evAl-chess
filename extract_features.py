@@ -1,22 +1,26 @@
 import chess
+from chess import Board
 import re
 import numpy as np
+
+# Add some crucial constants and functions to the chess module.
 
 chess.PIECES = [
     'P', 'N', 'B', 'R', 'Q', 'K',
     'p', 'n', 'b' ,'r', 'q', 'k'
 ]
 
+def __all_pseudo_legal_moves(self):
+    # `Board.pseudo_legal_moves` yields the moves only for the side to
+    # play. Change the side to play and append the opposing sides' moves
+    # to get all the pseudo-legal moves.
+    all_pseudo_legal_moves = [move for move in self.pseudo_legal_moves]
+    self.turn = not self.turn
+    all_pseudo_legal_moves += [move for move in self.pseudo_legal_moves]
+    self.turn = not self.turn
+    return all_pseudo_legal_moves
 
-    # Search for floats in `comment`. No other piece of information logged
-    # by the TCEC comes in the form of a float, so this yields the evaluation.
-    engine_eval = re.findall('\d+\.\d+', comment)
-    if len(engine_eval) == 0:
-        # This move wasn't calculated because it was taken from the book.
-        return None
-    else:
-        assert len(engine_eval) == 1
-        return engine_eval[0]
+Board.all_pseudo_legal_moves = __all_pseudo_legal_moves
 
 
 def _side_to_move(position):
@@ -107,42 +111,40 @@ def _piece_lists(position):
         )
     ]
 
+def _direction(from_square, to_square):
+    from_coord, to_coord = _to_coord(from_square), _to_coord(to_square)
+    dx, dy = (to_coord[0] - from_coord[0], to_coord[1] - from_coord[1])
+    dx, dy = dx // max(abs(dx), abs(dy)), dy // max(abs(dx), abs(dy))
+    return {
+        (0, 1) : 0,
+        (-1, 1) : 1,
+        (-1, 0) : 2,
+        (-1, -1) : 3,
+        (0, -1) : 4,
+        (1, -1) : 5,
+        (1, 0) : 6,
+        (1, 1) : 7
+    }[(dx, dy)]
 
 def _sliding_pieces_mobility(position):
     '''
     How far each {white, black} {bishop, rook, queen} can slide in each
-    direction.
+    applicable direction.
     '''
-    # TODO: Refactor. Code taken from `_piece_lists()`.
-    sliding_pieces = (
-        'B', 'R', 'Q',
-        'b', 'r', 'q'
-    )
-    sliding_piece_squares = { piece : [] for piece in sliding_pieces }
+    sliding_pieces = ('B', 'R', 'Q', 'b', 'r', 'q')
 
-    for square in chess.SQUARES:
-        piece = position.piece_at(square)
-        if piece is not None and piece.symbol() in sliding_pieces:
-            sliding_piece_squares[piece.symbol()].append(square)
-    print(sliding_piece_squares)
 
-    # `chess.Board.pseudo_legal_moves` yields the moves only for the side to
-    # play. Change the side to play and append the opposing sides' moves
-    # to get all the pseudo-legal moves.
-    all_pseudo_legal_moves = [move for move in position.pseudo_legal_moves]
-    position.turn = not position.turn
-    all_pseudo_legal_moves += [move for move in position.pseudo_legal_moves]
-    position.turn = not position.turn
+    mobilities = {
+        sliding_piece : []
+        for sliding_piece in sliding_pieces
+    }
+    for move in position.all_pseudo_legal_moves():
+        piece = position.piece_at(move.from_square).symbol()
+        if piece in sliding_pieces:
+            mobilities[piece].append(_direction(move.from_square, move.to_square))
 
-    # TODO: Optimize.
-    return [
-        [
-            move.from_square in sliding_piece_squares[piece]
-            for move in all_pseudo_legal_moves
-        ]
-        .count(True)
-        for piece in sliding_pieces
-    ]
+    print(mobilities)
+    return []
 
 
 def _attack_and_defend_maps(position):
