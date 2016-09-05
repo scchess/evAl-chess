@@ -1,5 +1,6 @@
 import chess
 import re
+import numpy as np
 
 def get_engine_eval(game_node):
     '''
@@ -30,15 +31,18 @@ def get_engine_eval(game_node):
 
 def _side_to_move(position):
     '''
-    Returns True if it's White to move.
+    True if it's White to move.
+
+    Number of features contributed: 1.
     '''
     return [position.turn]
 
 
 def _castling_rights(position):
     '''
-    Returns True if {White, Black} has castling rights on the
-    {kingside, queenside}.
+    True if {White, Black} has castling rights on the {kingside, queenside}.
+
+    Number of features contributed: 4.
     '''
     return [
         position.has_kingside_castling_rights(chess.WHITE),
@@ -50,7 +54,9 @@ def _castling_rights(position):
 
 def _material_configuration(position):
     '''
+    The number of each piece on the board.
 
+    Number of features contributed: 12. Six types of pieces for each side.
     '''
     # The first field of the FEN representation of the position. To count
     # the number of each piece in the position, simply count the frequency
@@ -66,15 +72,15 @@ def _material_configuration(position):
 
 def _to_coord(square):
     '''
-    Returns the row-major coordinate of square. Used by `_piece_lists()`.
+    The row-major coordinate of square. Used by `_piece_lists()`.
     '''
-    return (square // 8, square % 8)
+    return (8 - square // 8 - 1, square % 8)
 
 
 def _get_min_attacker(position, color, square):
     '''
-    Returns the value of the minimum-valued attacker of `square`; returns 0
-    if `square` is not attacked by any piece.
+    The value of the minimum-valued attacker of `square`; 0 if `square` is
+    not attacked by any piece.
     '''
     return min(
         (
@@ -85,28 +91,80 @@ def _get_min_attacker(position, color, square):
     )
 
 def _piece_lists(position):
-    # There are things in life that you should just take for granted. Do
-    # yourself a favor and save me the shame and skip over this method.
+    '''
+    For each reasonably-possible piece (*):
+    1. Its row-major, zero-indexed coordinate. By default, (-1, -1).
+    2. Whether the piece is on the board.
+    3. The values of the minimum-valued {attacker, defender} of the piece
+       stored in a tuple. By default, (-1, -1).
+
+    Number of features contributed: 180. Sixteen slots for the original
+    pieces plus two extra for a knight and queen per side. Each slot takes
+    5 features, two for the coordinate, one for the bool, 2 for the
+    attacker and defender.
+
+    (*) It's technically possible to have, say, 10 knights per side. But
+    in practice having an extra queen and knight slot is enough unless
+    you're somehow in a position where you need to underpromote a pawn in the
+    opening or middlegame.
+    '''
+
+    # Warning: very ugly code.
+
+    pieces = [
+        'P', 'N', 'B', 'R', 'Q', 'K',
+        'p', 'n', 'b' ,'r', 'q', 'k'
+    ]
+
     piece_freqs = {
         'P' : 8, 'N' : 3, 'B' : 2, 'R' : 2, 'Q' : 2, 'K' : 1,
-        'p' : 8, 'n' : 3, 'b' : 2 ,'r' : 2, 'q' : 2, 'k' : 1
+        'p' : 8, 'n' : 3, 'b' : 2, 'r' : 2, 'q' : 2, 'k' : 1
     }
 
-    piece_coords = { piece : [] for piece in piece_freqs }
-    for square in chess.SQUARES_180:
+    piece_squares = { piece : [] for piece in pieces }
+    piece_min_attacker_and_defender = {}
+
+    SQUARES_COL_ORDERED = (
+        np.reshape(chess.SQUARES, (8, 8))
+        .transpose()
+        .flatten()
+        .tolist()
+    )
+    for square in SQUARES_COL_ORDERED:
         piece = position.piece_at(square)
         if piece is not None:
-            min_attacker_and_defender = tuple(
+            piece_squares[piece.symbol()].append(square)
+            piece_min_attacker_and_defender[square] = tuple(
                 _get_min_attacker(position, color, square)
                 for color in (not piece.color, piece.color)
             )
-            piece_coords[piece.symbol()].append(_to_coord(square) + min_attacker_and_defender)
+
+    square_of_missing_piece = (-1, -1)
+    for piece in pieces:
+        piece_squares[piece] += (
+            [square_of_missing_piece]
+            * (piece_freqs[piece] - len(piece_squares[piece]))
+        )
+
+    piece_on_board = (
+        square != square_of_missing_piece
+        for piece in pieces
+        for square in piece_squares[piece]
+    )
 
     return [
         element
-        for piece in piece_freqs
-        for coord in piece_coords[piece] + [(-1, -1)] * (piece_freqs[piece] - len(piece_coords[piece]))
-        for element in coord + (coord != (-1, -1),)
+        for piece in pieces
+        for square in piece_squares[piece]
+        for element in (
+            (-1, -1, next(piece_on_board), -1, 1)
+            if square == square_of_missing_piece
+            else (
+                _to_coord(square)
+                + (next(piece_on_board), )
+                + piece_min_attacker_and_defender[square]
+            )
+        )
     ]
 
 
@@ -124,7 +182,7 @@ def _attack_and_defend_maps(position):
     return [
         _get_min_attacker(position, color, square)
         for color in (chess.WHITE, chess.BLACK)
-        for square in chess.SQUARES_180
+        for square in chess.SQUARES
     ]
 
 def get_position_features(position):
