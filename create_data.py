@@ -59,7 +59,7 @@ while curr_game is not None:
 
         print(curr_game_node.board())
         print(engine_name, engine_eval)
-        print(extract_features.get_features(curr_game_node.board()))
+        print(extract_features.get_features(curr_game_node.board(), verbose=True))
         print()
 
         # Set curr_game_node to the next position in the game. If it's the
