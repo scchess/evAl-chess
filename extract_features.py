@@ -169,13 +169,37 @@ def _piece_lists(position):
 
 
 def _sliding_pieces_mobility(position):
-    return [[
-        any(
-            position.piece_type_at(move.from_square) == piece
-            for piece in (chess.QUEEN, chess.BISHOP, chess.ROOK)
-        )
-        for move in position.pseudo_legal_moves
-    ].count(True)]
+    '''
+    How far each {white, black} {bishop, rook, queen} can slide in each
+    direction.
+    '''
+    # TODO: Refactor. Code taken from `_piece_lists()`.
+    sliding_pieces = ('B', 'R', 'Q', 'b', 'r', 'q')
+    sliding_piece_squares = { piece : [] for piece in sliding_pieces }
+
+    for square in chess.SQUARES:
+        piece = position.piece_at(square)
+        if piece is not None and piece.symbol() in sliding_pieces:
+            sliding_piece_squares[piece.symbol()].append(square)
+    print(sliding_piece_squares)
+
+    # `chess.Board.pseudo_legal_moves` yields the moves only for the side to
+    # play. Change the side to play and append the opposing sides' moves
+    # to get all the pseudo-legal moves.
+    all_pseudo_legal_moves = [move for move in position.pseudo_legal_moves]
+    position.turn = not position.turn
+    all_pseudo_legal_moves += [move for move in position.pseudo_legal_moves]
+    position.turn = not position.turn
+
+    # TODO: Optimize.
+    return [
+        [
+            move.from_square in sliding_piece_squares[piece]
+            for move in all_pseudo_legal_moves
+        ]
+        .count(True)
+        for piece in sliding_pieces
+    ]
 
 
 def _attack_and_defend_maps(position):
