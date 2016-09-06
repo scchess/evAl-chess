@@ -1,6 +1,8 @@
 import extract_features
 import chess.pgn
 import re
+import time
+import pprint
 
 
 # (I thank you with all my heart, python-chess documentation.)
@@ -42,10 +44,12 @@ def get_engine_eval(game_node):
 curr_game = chess.pgn.read_game(tcec_2015_archive)
 
 # chess.pgn.read_game returns None when it reaches the EOF.
+n_games = 0
 while curr_game is not None:
 
     # Iterate through every move played.
     curr_game_node = curr_game.root()
+    pprint.pprint(curr_game.headers)
     while curr_game_node is not None:
 
         # The name of the engine that played the move leading to this node.
@@ -57,10 +61,17 @@ while curr_game is not None:
         # What that engine evaluated this position to be.
         engine_eval = get_engine_eval(curr_game_node)
 
-        print(curr_game_node.board())
-        print(engine_name, engine_eval)
-        print(extract_features.get_features(curr_game_node.board(), verbose=True))
-        print()
+        if n_games == 5:
+            print(curr_game_node.board(), end='\n\n')
+            print(curr_game_node.board().fen(), end='\n\n')
+            print(engine_name, engine_eval)
+            print(
+                extract_features.get_features(
+                    curr_game_node.board(),
+                    verbose=True
+                )
+            )
+            print()
 
         # Set curr_game_node to the next position in the game. If it's the
         # end of the game, set it to None.
@@ -72,4 +83,6 @@ while curr_game is not None:
 
     # Get the next game in the pgn file.
     curr_game = chess.pgn.read_game(tcec_2015_archive)
-    break
+    n_games += 1
+    if n_games == 10:
+        break
