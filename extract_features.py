@@ -80,6 +80,18 @@ def _init_square_data(position):
     information to `position`.
     '''
 
+    # To sort a list of squares `squares` into this arbitrary order,
+    #     squares = sorted(
+    #         squares,
+    #         key=lambda square : position.rand_square_order[square]
+    #     )
+    position.rand_square_order = dict(
+        zip(
+            chess.SQUARES,
+            np.random.permutation(range(64))
+        )
+    )
+
     piece_squares = { piece : [] for piece in chess.PIECES }
     for square in chess.SQUARES:
         piece = position.piece_at(square)
@@ -94,7 +106,7 @@ def _init_square_data(position):
         )
 
     position.piece_squares = [
-        square
+        (piece, square)
         for piece in chess.PIECES
         for square in np.random.permutation(piece_squares[piece])
     ]
@@ -222,7 +234,7 @@ def _piece_lists(position, verbose=False):
                         else tuple(reversed(position.min_attacker_of[square]))
                     )
                 )
-                for square in position.piece_squares
+                for piece, square in position.piece_squares
             ],
             tuple()
         )
@@ -278,7 +290,6 @@ def _sliding_pieces_mobility(position, verbose=False):
     the variables.
     '''
     up_down, diag = (0, 2, 4, 6), (1, 3, 5, 7)
-    sliding_pieces = ('B', 'R', 'Q', 'b', 'r', 'q')
     movable_dirs = {
         'B' : diag,
         'R' : up_down,
@@ -297,17 +308,17 @@ def _sliding_pieces_mobility(position, verbose=False):
     position.turn = not position.turn
     all_pseudo_legal_moves = side_1_moves + side_2_moves
 
+    sliding_pieces = ('B', 'R', 'Q', 'b', 'r', 'q')
     # The directions of all legal moves for each sliding piece. For instance,
     # if a white rook on `square` could legally move 3 down and 2 right,
-    # legal_move_dirs[('R', square)] would equal [6, 6, 6, 0, 0].
+    # legal_move_dirs[('R', square)] would equal [6, 6, 6, 0, 0]; a six
+    # for each of the moves down and a zero for each of the moves right.
+
     legal_move_dirs = {
         (piece, square) : []
-        for square in position.piece_squares
-        if square != chess.MISSING_PIECE_SQUARE
-        for piece in [position.piece_at(square).symbol()]
-        if piece in sliding_pieces
+        for piece, square in position.piece_squares
+        if square != chess.MISSING_PIECE_SQUARE and piece in sliding_pieces
     }
-
     for move in all_pseudo_legal_moves:
         piece = position.piece_at(move.from_square).symbol()
         if piece in sliding_pieces:
@@ -316,18 +327,14 @@ def _sliding_pieces_mobility(position, verbose=False):
             )
 
     mobilities = []
-    for sliding_piece in sliding_pieces:
-        found_pieces = [
-            move_dir_list
-            for (piece, from_square), move_dir_list
-            in legal_move_dirs.items()
-            if piece == sliding_piece
-        ]
-        for move_dir_list in found_pieces:
-            for movable_dir in movable_dirs[sliding_piece]:
-                mobilities.append(move_dir_list.count(movable_dir))
-        n_missing = chess.PIECE_CAPACITY[sliding_piece] - len(found_pieces)
-        mobilities += [-1] * len(movable_dirs[sliding_piece]) * n_missing
+    for piece, square in position.piece_squares:
+        if piece in sliding_pieces:
+            sliding_piece = piece
+            if square == chess.MISSING_PIECE_SQUARE:
+                mobilities += [-1] * len(movable_dirs[sliding_piece])
+            else:
+                for movable_dir in movable_dirs[sliding_piece]:
+                    mobilities.append(legal_move_dirs[(sliding_piece, square)].count(movable_dir))
 
     if verbose:
         print('Sliding pieces mobility')
