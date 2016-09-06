@@ -30,6 +30,7 @@ import chess
 from chess import Board
 import re
 import numpy as np
+import time
 
 # Add some crucial constants to the `chess` module.
 chess.PIECES = (
@@ -41,6 +42,11 @@ chess.PIECE_CAPACITY = {
     'p' : 8, 'n' : 3, 'b' : 2, 'r' : 2, 'q' : 2, 'k' : 1
 }
 chess.MISSING_PIECE_SQUARE = -1
+
+runtimes = {
+    i : 0.0
+    for i in range(10)
+}
 
 def get_features(position, verbose=False):
     '''
@@ -59,18 +65,129 @@ def get_features(position, verbose=False):
         list of `int`s, length on the order of 300
             The selected features of `position`.
     '''
+    prev_time = time.time()
     _init_square_data(position)
-    features = (
-        []
-        + _side_to_move(position, verbose)
-        + _castling_rights(position, verbose)
-        + _material_configuration(position, verbose)
-        + _piece_lists(position, verbose)
-        + _sliding_pieces_mobility(position, verbose)
-        + _attack_and_defend_maps(position, verbose)
-    )
+    runtimes[0] += time.time() - prev_time
+    # features = (
+    #     []
+    #     + _side_to_move(position, verbose)
+    #     + _castling_rights(position, verbose)
+    #     + _material_configuration(position, verbose)
+    #     + _piece_lists(position, verbose)
+    #     + _sliding_pieces_mobility(position, verbose)
+    #     + _attack_and_defend_maps(position, verbose)
+    # )
+
+    features = []
+
+    prev_time = time.time()
+    features += _side_to_move(position, verbose)
+    runtimes[1] += time.time() - prev_time
+
+    prev_time = time.time()
+    features += _castling_rights(position, verbose)
+    runtimes[2] += time.time() - prev_time
+
+    prev_time = time.time()
+    features += _material_configuration(position, verbose)
+    runtimes[3] += time.time() - prev_time
+
+    prev_time = time.time()
+    features += _piece_lists(position, verbose)
+    runtimes[4] += time.time() - prev_time
+
+    prev_time = time.time()
+    features += _sliding_pieces_mobility(position, verbose)
+    runtimes[5] += time.time() - prev_time
+
+    prev_time = time.time()
+    features += _attack_and_defend_maps(position, verbose)
+    runtimes[6] += time.time() - prev_time
+
+
     assert all(type(feature) in [int, bool] for feature in features)
     return features
+
+def __init_min_attackers(piece_squares):
+
+    # 0 if no piece. 1 if white piece. 2 if black piece.
+    piece_exists = np.zeros((8, 8))
+    for piece in chess.PIECES:
+        for square in piece_squares[piece]:
+            piece_exists[__to_coord(square)] = True
+
+
+    attackers_of_white = np.zeros((8, 8))
+    attackers_of_black = np.zeros((8, 8))
+
+    def in_range(i, j):
+        return (0 <= i < 8) and (0 <= j < 8)
+
+    def assign(arr, i, j, val):
+        if not in_range(i, j):
+            return False
+        elif piece_exists[i, j] == 1 or piece_exists[i, j] == 2:
+            arr[i, j] = val
+            return False
+        else:
+            arr[i, j] = val
+            return True
+
+    def assign_while(arr, i, di, j, dj, val):
+        while assign(arr, i + di, j + dj, val):
+            i += di
+            j += dj
+
+    for kingi, kingj in (__to_coord(square) for square in piece_squares['K']):
+        for di, dj in zip((+1, +1, +0, -1, -1, -1, +0, +1), (+0, +1, +1, +1, +0, -1, -1, -1)):
+            assign(attackers_of_white, kingi + di, kingj + dj, 6)
+
+    for queeni, queenj in (__to_coord(square) for square in piece_squares['Q']):
+        for di, dj in zip((+1, +1, +0, -1, -1, -1, +0, +1), (+0, +1, +1, +1, +0, -1, -1, -1)):
+            assign_while(attackers_of_white, queeni, di, queenj, dj, 5)
+
+    for rooki, rookj in (__to_coord(square) for square in piece_squares['R']):
+        for di, dj in zip((+1, +0, -1, +0), (+0, +1, +0, -1)):
+            assign_while(attackers_of_white, rooki, di, rookj, dj, 4)
+
+    for bishopi, bishopj in (__to_coord(square) for square in piece_squares['B']):
+        for di, dj in zip((+1, -1, -1, +1), (+1, +1, -1, -1)):
+            assign_while(attackers_of_white, bishopi, di, bishopj, dj, 3)
+
+    for knighti, knightj in (__to_coord(square) for square in piece_squares['N']):
+        for di, dj in zip((+2, +1, -1, -2, -2, -1, +1, +2), (+1, +2, +2, +1, -1, -2, -2, -1)):
+            assign(attackers_of_white, knighti + di, knightj + dj, 2)
+
+    for pawni, pawnj in (__to_coord(square) for square in piece_squares['P']):
+        for di, dj in zip((-1, -1), (-1, +1)):
+            assign(attackers_of_white, pawni + di, pawnj + dj, 1)
+
+    for kingi, kingj in (__to_coord(square) for square in piece_squares['k']):
+        for di, dj in zip((+1, +1, +0, -1, -1, -1, +0, +1), (+0, +1, +1, +1, +0, -1, -1, -1)):
+            assign(attackers_of_black, kingi + di, kingj + dj, 6)
+
+    for queeni, queenj in (__to_coord(square) for square in piece_squares['q']):
+        for di, dj in zip((+1, +1, +0, -1, -1, -1, +0, +1), (+0, +1, +1, +1, +0, -1, -1, -1)):
+            assign_while(attackers_of_black, queeni, di, queenj, dj, 5)
+
+    for rooki, rookj in (__to_coord(square) for square in piece_squares['r']):
+        for di, dj in zip((+1, +0, -1, +0), (+0, +1, +0, -1)):
+            assign_while(attackers_of_black, rooki, di, rookj, dj, 4)
+
+    for bishopi, bishopj in (__to_coord(square) for square in piece_squares['b']):
+        for di, dj in zip((+1, -1, -1, +1), (+1, +1, -1, -1)):
+            assign_while(attackers_of_black, bishopi, di, bishopj, dj, 3)
+
+    for knighti, knightj in (__to_coord(square) for square in piece_squares['n']):
+        for di, dj in zip((+2, +1, -1, -2, -2, -1, +1, +2), (+1, +2, +2, +1, -1, -2, -2, -1)):
+            assign(attackers_of_black, knighti + di, knightj + dj, 2)
+
+    for pawni, pawnj in (__to_coord(square) for square in piece_squares['p']):
+        for di, dj in zip((+1, +1), (-1, +1)):
+            assign(attackers_of_black, pawni + di, pawnj + dj, 1)
+
+    return [(j, i) for i, j in zip(attackers_of_white.flatten().astype(int).tolist(), attackers_of_black.flatten().astype(int).tolist())]
+
 
 
 def _init_square_data(position):
@@ -102,6 +219,9 @@ def _init_square_data(position):
         piece = position.piece_at(square)
         if piece is not None:
             piece_squares[piece.symbol()].append(square)
+
+    position.min_attacker_of = __init_min_attackers(piece_squares)
+
     # Add the missing pieces and their squares, `chess.MISSING_PIECE_SQUARE`.
     for piece in chess.PIECES:
         piece_squares[piece] += (
@@ -110,26 +230,15 @@ def _init_square_data(position):
         )
     # Set to `position.piece_squares` with the pieces ordered correctly and
     # the squares of each piece permuted.
+
     position.piece_squares = [
         (piece, square)
         for piece in chess.PIECES
         for square in np.random.permutation(piece_squares[piece]).tolist()
     ]
 
-    position.min_attacker_of = {
-        square : tuple(
-            min(
-                (
-                    position.piece_type_at(square)
-                    for square in position.attackers(color, square)
-                ),
-                default=0
-            )
-            for color in (chess.BLACK, chess.WHITE)
-        )
-        for square in chess.SQUARES
-    }
 
+    # Use lists instead of square: dicts, you dumbass! Squares are in range(64).
 
 def _side_to_move(position, verbose=False):
     '''
@@ -385,11 +494,12 @@ def _attack_and_defend_maps(position, verbose=False):
     attack_and_defend_maps = [
         position.min_attacker_of[square][color]
         for color in (chess.BLACK, chess.WHITE)
-        for square in chess.SQUARES_180
+        for square in chess.SQUARES
     ]
 
-    if verbose:
+    if not verbose:
         print('Attack and defend maps.')
+        print(position)
         print('------------------------------------')
         print('White attackers.')
         print(np.reshape(attack_and_defend_maps, (16, 8))[:8])
