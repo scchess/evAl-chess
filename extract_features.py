@@ -300,12 +300,17 @@ def _sliding_pieces_mobility(position, verbose=False):
     # The directions of all legal moves for each sliding piece. For instance,
     # if a white rook on `square` could legally move 3 down and 2 right,
     # legal_move_dirs[('R', square)] would equal [6, 6, 6, 0, 0].
-    legal_move_dirs = { }
+    legal_move_dirs = {
+        (piece, square) : []
+        for square in position.piece_squares
+        if square != chess.MISSING_PIECE_SQUARE
+        for piece in [position.piece_at(square).symbol()]
+        if piece in sliding_pieces
+    }
+
     for move in all_pseudo_legal_moves:
         piece = position.piece_at(move.from_square).symbol()
         if piece in sliding_pieces:
-            if (piece, move.from_square) not in legal_move_dirs:
-                legal_move_dirs[(piece, move.from_square)] = []
             legal_move_dirs[(piece, move.from_square)].append(
                 __direction(move.from_square, move.to_square)
             )
