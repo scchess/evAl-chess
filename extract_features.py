@@ -61,11 +61,6 @@ chess.PIECE_MOVEMENTS = {
         'p' : tuple(zip((+1, +1), (-1, +1)))
     }
 
-runtimes = {
-    i : 0.0
-    for i in range(10)
-}
-
 def get_features(position, verbose=False):
     '''
     Returns a list of low-level features of `position` to be used for
@@ -83,47 +78,16 @@ def get_features(position, verbose=False):
         list of `int`s, length on the order of 300
             The selected features of `position`.
     '''
-    prev_time = time.time()
     _init_square_data(position)
-    runtimes[0] += time.time() - prev_time
-    # features = (
-    #     []
-    #     + _side_to_move(position, verbose)
-    #     + _castling_rights(position, verbose)
-    #     + _material_configuration(position, verbose)
-    #     + _piece_lists(position, verbose)
-    #     + _sliding_pieces_mobility(position, verbose)
-    #     + _attack_and_defend_maps(position, verbose)
-    # )
-
-    features = []
-
-    prev_time = time.time()
-    features += _side_to_move(position, verbose)
-    runtimes[1] += time.time() - prev_time
-
-    prev_time = time.time()
-    features += _castling_rights(position, verbose)
-    runtimes[2] += time.time() - prev_time
-
-    prev_time = time.time()
-    features += _material_configuration(position, verbose)
-    runtimes[3] += time.time() - prev_time
-
-    prev_time = time.time()
-    features += _piece_lists(position, verbose)
-    runtimes[4] += time.time() - prev_time
-
-    prev_time = time.time()
-    features += _sliding_pieces_mobility(position, verbose)
-    runtimes[5] += time.time() - prev_time
-
-    prev_time = time.time()
-    features += _attack_and_defend_maps(position, verbose)
-    runtimes[6] += time.time() - prev_time
-
-
-    assert all(type(feature) in [int, bool] for feature in features)
+    features = (
+        []
+        + _side_to_move(position, verbose)
+        + _castling_rights(position, verbose)
+        + _material_configuration(position, verbose)
+        + _piece_lists(position, verbose)
+        + _sliding_pieces_mobility(position, verbose)
+        + _attack_and_defend_maps(position, verbose)
+    )
     return features
 
 def __init_min_attackers(position, piece_squares):
