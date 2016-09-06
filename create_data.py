@@ -67,15 +67,27 @@ def create_data():
     n_games = 0
     # chess.pgn.read_game returns None when it reaches the EOF.
     while curr_game is not None:
-        # The first two characters aren't part of the evals.
-        evals = (int(_eval) for _eval in stockfish_evals.readline().split(',')[1].split())
+        print(n_games)
+        # The lines begin with a number and comma (e.g., '451,') which aren't
+        # part of the evaluations. Discard by splitting the string by the
+        # comma, taking the second part, and splitting once again to get the
+        # individual numbers.
+        evals = (
+            float(_eval) / 100.0
+            # Stockfish gives 'NA' when it can't evaluate the position.
+            if _eval != 'NA'
+            else None
+            for _eval in stockfish_evals.readline().split(',')[1].split()
+        )
 
         # Iterate through every move played.
         curr_game_node = curr_game.root().variation(0)
         while curr_game_node is not None:
             features, _eval = get_features(curr_game_node), next(evals)
-            data_X.append(features)
-            data_Y.append(_eval)
+
+            if _eval is not None:
+                data_X.append(features)
+                data_Y.append(_eval)
 
             # Set curr_game_node to the next position in the game. If it's the
             # end of the game, set it to None.
@@ -91,7 +103,7 @@ def create_data():
         if n_games == 10:
             break
 
-    np.save('/Users/colinni/evAl-chess/X.npy', np.array(data_X))
+    np.save('/Users/colinni/evAl-chess/X.npy', np.array(data_X).astype(float))
     np.save('/Users/colinni/evAl-chess/Y.npy', np.array(data_Y))
 
 create_data()
