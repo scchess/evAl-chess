@@ -113,6 +113,7 @@ def _init_square_data(position):
         for square in chess.SQUARES
     }
 
+
 def _side_to_move(position, verbose=False):
     '''
     True if it's White to move.
@@ -121,7 +122,9 @@ def _side_to_move(position, verbose=False):
     '''
     side_to_move = [position.turn]
     if verbose:
+        print()
         print('Side to move')
+        print('------------------------------------')
         print([position.turn])
         print()
     return side_to_move
@@ -142,7 +145,12 @@ def _castling_rights(position, verbose=False):
 
     if verbose:
         print('Castling rights')
-        print(castling_rights)
+        print('------------------------------------')
+        rights = (right for right in castling_rights)
+        print('White kingside:', next(rights))
+        print('Black kingside:', next(rights))
+        print('White queenside:', next(rights))
+        print('Black queenside:', next(rights))
         print()
     return castling_rights
 
@@ -166,7 +174,10 @@ def _material_configuration(position, verbose=False):
 
     if verbose:
         print('Material Config')
-        print(material_config)
+        print('------------------------------------')
+        print_m_config = (m for m in material_config)
+        for piece in chess.PIECES:
+            print('Piece:', piece, '\tCount:', next(print_m_config))
         print()
 
     return material_config
@@ -197,33 +208,37 @@ def _piece_lists(position, verbose=False):
     you're somehow in a position where you need to underpromote a pawn in the
     opening or middlegame.
     '''
-    piece_on_board = (
-        square != chess.MISSING_PIECE_SQUARE
-        for square in position.piece_squares
-    )
-    piece_lists = [
-        element
-        for square in position.piece_squares
-        for element in (
-            (-1, -1, next(piece_on_board), -1, -1)
-            if square == chess.MISSING_PIECE_SQUARE
-            else (
-                __to_coord(square)
-                + (next(piece_on_board), )
-                + (
-                    position.min_attacker_of[square]
-                    if position.piece_at(square).color == chess.WHITE
-                    else tuple(reversed(position.min_attacker_of[square]))
+    piece_lists = list(
+        sum(
+            [
+                (-1, -1, False, -1, -1)
+                if square == chess.MISSING_PIECE_SQUARE
+                else (
+                    __to_coord(square)
+                    + (True, )
+                    + (
+                        position.min_attacker_of[square]
+                        if position.piece_at(square).color == chess.WHITE
+                        else tuple(reversed(position.min_attacker_of[square]))
+                    )
                 )
-            )
+                for square in position.piece_squares
+            ],
+            tuple()
         )
-    ]
+    )
 
     if verbose:
-        for i in range(len(piece_lists) // 5):
-            for j in range(5):
-                print(piece_lists[i * 5 + j], end=' ')
-            print()
+        print('Piece lists')
+        print('------------------------------------')
+        print_piece_lists = (element for element in piece_lists)
+        for piece in chess.PIECES:
+            print('Piece:', piece)
+            for num in range(chess.PIECE_CAPACITY[piece]):
+                print('#', num, end=': ', sep='')
+                for i in range(5):
+                    print(next(print_piece_lists), end=' ')
+                print()
         print()
 
     return piece_lists
@@ -233,7 +248,7 @@ def __direction(from_square, to_square):
     '''
     The direction traveled in going from `from_square` to `to_square`.
     The value v returned yields the direction in <cos(v * pi / 4),
-    ssin(v * pi / 4)>.
+    sin(v * pi / 4)>.
     '''
     from_coord, to_coord = __to_coord(from_square), __to_coord(to_square)
     dx, dy = (to_coord[0] - from_coord[0], to_coord[1] - from_coord[1])
@@ -311,7 +326,15 @@ def _sliding_pieces_mobility(position, verbose=False):
 
     if verbose:
         print('Sliding pieces mobility')
-        print(mobilities)
+        print('------------------------------------')
+        print_mobls = (mobl for mobl in mobilities)
+        for sliding_piece in sliding_pieces:
+            print('Sliding piece:', sliding_piece)
+            for num in range(chess.PIECE_CAPACITY[sliding_piece]):
+                print('#' + str(num), end=': ')
+                for movable_dir in movable_dirs[sliding_piece]:
+                    print(next(print_mobls), end=' ')
+                print()
         print()
 
     return mobilities
@@ -346,8 +369,13 @@ def _attack_and_defend_maps(position, verbose=False):
     ]
 
     if verbose:
-        print('Attack and defend maps')
-        print(np.reshape(attack_and_defend_maps, (16, 8)))
+        print('Attack and defend maps.')
+        print('------------------------------------')
+        print('Attackers of White.')
+        print(np.reshape(attack_and_defend_maps, (16, 8))[:8])
+        print()
+        print('Defenders of White.')
+        print(np.reshape(attack_and_defend_maps, (16, 8))[8:])
         print()
 
     return attack_and_defend_maps
