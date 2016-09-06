@@ -1,7 +1,8 @@
 import numpy as np
 
+
 from sklearn import cross_validation, preprocessing
-from keras.models import Sequential
+from keras.models import Sequential, load_model
 from keras.layers.core import Dense, Activation, Dropout
 from keras.optimizers import SGD
 
@@ -11,8 +12,10 @@ X = np.load('/Users/colinni/evAl-chess/X.npy')
 Y = np.load('/Users/colinni/evAl-chess/Y.npy')
 
 # Discard samples where the evaluation is out of [-10, +10].
-X = X[np.where(np.abs(Y) < 10.0)]
-Y = Y[np.where(np.abs(Y) < 10.0)]
+X = X[np.where(np.abs(Y) < 1.5)]
+Y = Y[np.where(np.abs(Y) < 1.5)]
+
+Y = np.sqrt(np.abs(Y)) * (2 * (Y < 0) - 1)
 
 permuted = np.random.permutation(len(Y))
 X, Y = X[permuted], Y[permuted]
@@ -46,14 +49,21 @@ model = Sequential(
 
 model.summary()
 model.compile(loss='mean_squared_error', optimizer='sgd')
+# model = load_model('/Users/colinni/evAl-chess/saved_keras_model.h5')
 
-history = model.fit(
-    X_train,
-    Y_train,
-    batch_size=32,
-    nb_epoch=200,
-    verbose=1
-)
+while True:
+    inp = input('Continue training for how many epochs (\'s\' to stop)? ')
+    if inp == 's':
+        break
+    history = model.fit(
+        X_train,
+        Y_train,
+        batch_size=128,
+        nb_epoch=int(inp),
+        verbose=1
+    )
+
+model.save('/Users/colinni/evAl-chess/saved_keras_model.h5')
 
 score = model.evaluate(X_test, Y_test, verbose=1)
 print('Test score', score)
@@ -61,4 +71,4 @@ print('Test score', score)
 predictions = model.predict(X_test)
 print(len(predictions), Y_test.shape)
 for i in range(30):
-    print(predictions[i], Y_test[i])
+    print(np.round(predictions[i], 3), np.round(Y_test[i], 3))
