@@ -32,22 +32,20 @@ import re
 import numpy as np
 
 # Add some crucial constants to the `chess` module.
-chess.PIECES = [
+chess.PIECES = (
     'P', 'N', 'B', 'R', 'Q', 'K',
     'p', 'n', 'b' ,'r', 'q', 'k'
-]
-
+)
 chess.PIECE_CAPACITY = {
     'P' : 8, 'N' : 3, 'B' : 2, 'R' : 2, 'Q' : 2, 'K' : 1,
     'p' : 8, 'n' : 3, 'b' : 2, 'r' : 2, 'q' : 2, 'k' : 1
 }
-
 chess.MISSING_PIECE_SQUARE = -1
 
 def get_features(position, verbose=False):
     '''
     Returns a list of low-level features of `position` to be used for
-    training. See individual docstrings for more information.
+    training. (See individual docstrings for more information.)
 
     Warning: assigns new members to `position`.
 
@@ -62,7 +60,7 @@ def get_features(position, verbose=False):
             The selected features of `position`.
     '''
     _init_square_data(position)
-    return (
+    features = (
         []
         + _side_to_move(position, verbose)
         + _castling_rights(position, verbose)
@@ -71,44 +69,51 @@ def get_features(position, verbose=False):
         + _sliding_pieces_mobility(position, verbose)
         + _attack_and_defend_maps(position, verbose)
     )
+    assert all(type(feature) in [int, bool] for feature in features)
+    return features
 
 
 def _init_square_data(position):
     '''
-    Determines which squares have pieces; calculates the value of the
-    lowest-valued attacker and defender of each square. Assigns this
-    information to `position`.
+    Calculates some basic information of the position and stores it in
+    `position`.
+
+    `position.piece_squares`:
+
+        Each possible piece -- 8 pawns, 3 knights, 2 queens, etc. -- and
+        its square. If the piece isn't on the board, the square is set to
+        `chess.MISSING_PIECE_SQUARE`. The length is constant regardless of
+        the position because the number of possible pieces is constant.
+
+        Pieces are grouped together in the same order as `chess.PIECES` --
+        'P', 'N', 'B' ... 'p', 'n', 'b' ... -- but their squares are randomly
+        permuted. As a result, the first 8 pieces are guaranteed to be 'P'
+        but their squares random.
+
+    `position.min_attacker_of`:
+
+        The value of the lowest-valued attacker of each square for each
+        color. `position.min_attacker_of[square][chess.BLACK]` is the value
+        of the lowest-valued black piece that attacks `square`.
     '''
-
-    # To sort a list of squares `squares` into this arbitrary order,
-    #     squares = sorted(
-    #         squares,
-    #         key=lambda square : position.rand_square_order[square]
-    #     )
-    position.rand_square_order = dict(
-        zip(
-            chess.SQUARES,
-            np.random.permutation(range(64))
-        )
-    )
-
+    # The squares of the pieces on the board.
     piece_squares = { piece : [] for piece in chess.PIECES }
     for square in chess.SQUARES:
         piece = position.piece_at(square)
         if piece is not None:
             piece_squares[piece.symbol()].append(square)
-
-
+    # Add the missing pieces and their squares, `chess.MISSING_PIECE_SQUARE`.
     for piece in chess.PIECES:
         piece_squares[piece] += (
             [chess.MISSING_PIECE_SQUARE]
             * (chess.PIECE_CAPACITY[piece] - len(piece_squares[piece]))
         )
-
+    # Set to `position.piece_squares` with the pieces ordered correctly and
+    # the squares of each piece permuted.
     position.piece_squares = [
         (piece, square)
         for piece in chess.PIECES
-        for square in np.random.permutation(piece_squares[piece])
+        for square in np.random.permutation(piece_squares[piece]).tolist()
     ]
 
     position.min_attacker_of = {
@@ -120,7 +125,7 @@ def _init_square_data(position):
                 ),
                 default=0
             )
-            for color in (chess.WHITE, chess.BLACK)
+            for color in (chess.BLACK, chess.WHITE)
         )
         for square in chess.SQUARES
     }
@@ -128,7 +133,7 @@ def _init_square_data(position):
 
 def _side_to_move(position, verbose=False):
     '''
-    True if it's White to move.
+    True if it's White turn to move.
 
     Number of features contributed: 1.
     '''
@@ -164,6 +169,7 @@ def _castling_rights(position, verbose=False):
         print('White queenside:', next(rights))
         print('Black queenside:', next(rights))
         print()
+
     return castling_rights
 
 
@@ -309,11 +315,10 @@ def _sliding_pieces_mobility(position, verbose=False):
     all_pseudo_legal_moves = side_1_moves + side_2_moves
 
     sliding_pieces = ('B', 'R', 'Q', 'b', 'r', 'q')
-    # The directions of all legal moves for each sliding piece. For instance,
-    # if a white rook on `square` could legally move 3 down and 2 right,
-    # legal_move_dirs[('R', square)] would equal [6, 6, 6, 0, 0]; a six
-    # for each of the moves down and a zero for each of the moves right.
 
+    # The number of moves each sliding piece can make in each direction.
+    # For instance, if a white rook on `square` could legally move 2 right
+    # and 3 down, legal_move_dirs[('R', square)] would equal [2, 0, 0, 3].
     legal_move_dirs = {
         (piece, square) : []
         for piece, square in position.piece_squares
@@ -333,8 +338,11 @@ def _sliding_pieces_mobility(position, verbose=False):
             if square == chess.MISSING_PIECE_SQUARE:
                 mobilities += [-1] * len(movable_dirs[sliding_piece])
             else:
-                for movable_dir in movable_dirs[sliding_piece]:
-                    mobilities.append(legal_move_dirs[(sliding_piece, square)].count(movable_dir))
+                mobilities += [
+                    legal_move_dirs[(sliding_piece, square)]
+                    .count(movable_dir)
+                    for movable_dir in movable_dirs[sliding_piece]
+                ]
 
     if verbose:
         print('Sliding pieces mobility')
@@ -376,17 +384,17 @@ def _attack_and_defend_maps(position, verbose=False):
 
     attack_and_defend_maps = [
         position.min_attacker_of[square][color]
-        for color in (chess.WHITE, chess.BLACK)
+        for color in (chess.BLACK, chess.WHITE)
         for square in chess.SQUARES_180
     ]
 
     if verbose:
         print('Attack and defend maps.')
         print('------------------------------------')
-        print('Attackers of White.')
+        print('White attackers.')
         print(np.reshape(attack_and_defend_maps, (16, 8))[:8])
         print()
-        print('Defenders of White.')
+        print('White defenders.')
         print(np.reshape(attack_and_defend_maps, (16, 8))[8:])
         print()
 
