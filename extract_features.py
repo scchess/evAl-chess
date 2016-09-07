@@ -32,6 +32,7 @@ import re
 import numpy as np
 import time
 import string
+import itertools
 
 # Add some crucial constants to the `chess` module.
 chess.WHITE_PIECES, chess.BLACK_PIECES = (
@@ -52,14 +53,17 @@ chess.PIECE_CAPACITY = {
 chess.MISSING_PIECE_SQUARE = -1
 
 chess.PIECE_MOVEMENTS = {
-        'K' : tuple(zip((+1, +1, +0, -1, -1, -1, +0, +1), (+0, +1, +1, +1, +0, -1, -1, -1))),
-        'Q' : tuple(zip((+1, +1, +0, -1, -1, -1, +0, +1), (+0, +1, +1, +1, +0, -1, -1, -1))),
-        'R' : tuple(zip((+1, +0, -1, +0), (+0, +1, +0, -1))),
-        'B' : tuple(zip((+1, -1, -1, +1), (+1, +1, -1, -1))),
-        'N' : tuple(zip((+2, +1, -1, -2, -2, -1, +1, +2), (+1, +2, +2, +1, -1, -2, -2, -1))),
-        'P' : tuple(zip((-1, -1), (-1, +1))),
-        'p' : tuple(zip((+1, +1), (-1, +1)))
-    }
+    'K' : tuple(zip((+1, +1, +0, -1, -1, -1, +0, +1), (+0, +1, +1, +1, +0, -1, -1, -1))),
+    'Q' : tuple(zip((+1, +1, +0, -1, -1, -1, +0, +1), (+0, +1, +1, +1, +0, -1, -1, -1))),
+    'R' : tuple(zip((+1, +0, -1, +0), (+0, +1, +0, -1))),
+    'B' : tuple(zip((+1, -1, -1, +1), (+1, +1, -1, -1))),
+    'N' : tuple(zip((+2, +1, -1, -2, -2, -1, +1, +2), (+1, +2, +2, +1, -1, -2, -2, -1))),
+    'P' : tuple(zip((-1, -1), (-1, +1))),
+    'p' : tuple(zip((+1, +1), (-1, +1)))
+}
+
+FEATURE_GROUP_SIZES = (0, 17, 244, 128)
+FEATURE_GROUP_SPLIT_POINTS = tuple(itertools.accumulate(FEATURE_GROUP_SIZES))
 
 def get_features(position, verbose=False):
     '''
@@ -89,6 +93,18 @@ def get_features(position, verbose=False):
         + _attack_and_defend_maps(position, verbose)
     )
     return features
+
+def split_features(features):
+    '''
+    Split `features` into groups of features with the same modality.
+    '''
+    return [
+        features[ : , start : end]
+        for start, end in zip(
+            FEATURE_GROUP_SPLIT_POINTS[ : -1],
+            FEATURE_GROUP_SPLIT_POINTS[1 : ]
+        )
+    ]
 
 def __init_min_attackers(position, piece_squares):
     '''
