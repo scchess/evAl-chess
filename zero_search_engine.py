@@ -1,15 +1,21 @@
+'''
+Work in-progress.
+'''
+
 from keras.models import load_model
 import chess
 import train
 import extract_features
 import numpy as np
 
-model = load_model('/Users/colinni/evAl-chess/saved_keras_model_merged_first.h5')
+model = load_model(
+    '/Users/colinni/evAl-chess/saved_keras_model_merged_fourth.h5'
+)
 
 def engine_evaluate(position):
     '''
-    The zero-search engine's evaluation of `position`; a higher number means
-    that the engine evaluates that the position favors white.
+    The zero-search engine's evaluation of `position`; a higher number
+    means that the engine evaluates that the position favors white.
     '''
     x_unscaled = np.array([extract_features.get_features(position)]).astype(float)
     x_scaled = train.scaler_X.transform(x_unscaled)
@@ -29,7 +35,7 @@ def get_engine_analysis(position):
     from. Heh, oops -- I thought I forgot to add something to the training
     data...)
     '''
-    engine_analysis = { }
+    engine_analysis = {}
     for move in position.legal_moves:
         # Play the move; evaluate the position; then 'unplay' the move.
         position.push(move)
@@ -99,6 +105,7 @@ def alpha_beta(position, depth, alpha=-500, beta=+500, color=chess.WHITE):
                 break
         return best_eval, best_move
 
+
 def play_engine(verbose=False):
 
     position = chess.Board()
@@ -120,7 +127,7 @@ def play_engine(verbose=False):
 play_engine(True)
 
 # position = chess.Board()
-
+#
 # moves = ['Nf3', 'd6', 'Ne5', 'dxe5', 'd4', 'e4', 'Qd3', 'exd3', 'exd3']
 # for move in moves:
 #     position.push_san(move)
