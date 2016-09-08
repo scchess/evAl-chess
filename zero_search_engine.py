@@ -9,7 +9,7 @@ import extract_features
 import numpy as np
 
 model = load_model(
-    '/Users/colinni/evAl-chess/saved_keras_model_merged_fourth.h5'
+    '/Users/colinni/evAl-chess/saved_keras_model.h5'
 )
 
 def engine_evaluate(position):

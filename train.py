@@ -150,7 +150,7 @@ if __name__ == '__main__':
     #
     # model.compile(loss='mean_squared_error', optimizer='sgd')
 
-    model = load_model('/Users/colinni/evAl-chess/saved_keras_model_merged_third.h5')
+    model = load_model('/Users/colinni/evAl-chess/saved_keras_model.h5')
     model.summary()
 
     while True:
@@ -170,4 +170,4 @@ if __name__ == '__main__':
             verbose=1
         )
 
-    model.save('/Users/colinni/evAl-chess/saved_keras_model_merged_fourth.h5')
+    model.save('/Users/colinni/evAl-chess/saved_keras_model.h5')
