@@ -1,8 +1,8 @@
 # evAl-chess
+Garry Kasparov held his own against Deep Blue in their '96 chess match. But while Kasparov looked at on the order of 3 positions per second, his computer opponent looked at millions; engines make up for a low-level evaluation function by simply looking at more positions. The idea behind this project is to create a slower but higher-level evaluation function. Of course what follows is a chess engine that analyzes few positions; something like a human, but that's stretching the point.
 
-Garry Kasparov held his own against Deep Blue in their '96 chess match. But while Kasparov looked at on the order of 3 positions per second, his computer opponent looked at millions; engines make up for a low-level evaluation function by simply looking at more positions.
-
-The idea behind this project is to create a slower but higher-level evaluation function. Of course what follows is a chess engine that analyzes few positions; something like a human, but that's stretching the point. This idea isn't new: NeuroChess and Giraffe are two examples of such engines. A human-strength engine that searches a similar number of positions per second, around 2 to 3, would be a challenge to create (toungue very much in cheek), so perhaps 1,000 positions per second is a good goal -- that is, while playing at, say, a 2200 FIDE level. 
+# Similar projects
+This idea isn't new: NeuroChess and Giraffe are two examples of such engines. They both purposely trade off evaluation speed for accuracy and depth in understanding. Again stretching the point, we could consider humans to be the prime example of a slow-but-deep engine; even the very best humans examine very few positions but still play quite well. A computer engine that searches a similar number of positions per second as a human would be a challenge to create (toungue very much in cheek), so perhaps 1,000 positions per second is a good goal -- that is, while playing at, say, a 2200 FIDE level.
 
 Ideally, our function would take as input the FEN reprentation of a board and output `1`, `0`, or `-1` -- a win, a draw, or a loss for white. Of course this is realistically impossible. Instead, we extract the low-level features of a given position and use them as the input, and we train our function to output the pawn evaluation. The neural net is our function of choice and for similar projects as well.
 
