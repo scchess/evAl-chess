@@ -1,5 +1,9 @@
 '''
-Work in-progress.
+Methods to train the model -- selecting specific data, scaling,
+testing, etc.
+
+Definitely a work in-progress. Currently a workspace for
+experimentation.
 '''
 
 import numpy as np
@@ -150,7 +154,7 @@ if __name__ == '__main__':
     #
     # model.compile(loss='mean_squared_error', optimizer='sgd')
 
-    model = load_model('/Users/colinni/evAl-chess/saved_keras_model.h5')
+    model = load_model('/Users/colinni/evAl-chess/trained_keras_model.h5')
     model.summary()
 
     while True:
