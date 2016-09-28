@@ -84,7 +84,7 @@ def get_features(position, verbose=False):
     Warning: assigns new members to `position`.
 
     Parameters:
-        `position` : `chess.Board` object
+        `position` : a `chess.Board` instance
             The position from which to extract features.
         `verbose` : bool
             Prints the features by group if True.
@@ -331,9 +331,6 @@ def _init_square_data(position):
     ]
 
 
-    # Use lists instead of square: dicts, you dumbass! Squares are in
-    # range(64).
-
 def _side_to_move(position, verbose=False):
     '''
     True if it's White turn to move.
@@ -497,9 +494,6 @@ def _sliding_pieces_mobility(position, verbose=False):
     for each possible piece. Four bishops and 4 rooks with 4 directions
     each yields 32; four queens with 8 directions each yields another
     32.
-
-    The code is difficult to understand; there aren't any good names
-    for the variables.
     '''
     mobilities = [
         scope_dir
