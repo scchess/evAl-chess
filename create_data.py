@@ -7,9 +7,10 @@ positions (assuming 40 moves -- 80 plies -- per game) and their
 'ground-truth' evalutions.
 
 The `create_data()` method iterates through the games in PGN
-format -- the default -- and for each position pairs the low-level
-features with Stockfish's evaluation. It then stores this data as
-a load-able numpy array for later training.
+format -- the default -- and for each position extracts the low-level
+features using `extract_features.py` and pairs them with Stockfish's
+valuation. It then stores this data as a load-able numpy array for
+later training.
 '''
 
 import extract_features
@@ -20,15 +21,14 @@ import pprint
 import numpy as np
 import time
 
-
 def create_data(n_samples, verbose=False):
     file_game_pgns, file_stockfish_evals = (
         open(
-            '.../evAl-chess/data.pgn',
+            '../evAl-chess/data.pgn',
             encoding='utf-8-sig',
             errors='surrogateescape'
         ),
-        open('.../evAl-chess/stockfish.csv')
+        open('../evAl-chess/stockfish.csv')
     )
     # Discard the first line; it contains headers.
     file_stockfish_evals.readline()
@@ -102,5 +102,5 @@ def create_data(n_samples, verbose=False):
 
     # Convert `data_X` and `data_Y` into numpy arrays and store them
     # in numpy's npy format. To load, `np.load(path)`.
-    np.save('.../evAl-chess/X.npy', np.array(data_X).astype(float))
-    np.save('.../evAl-chess/Y.npy', np.array(data_Y))
+    np.save('../evAl-chess/X.npy', np.array(data_X).astype(float))
+    np.save('../evAl-chess/Y.npy', np.array(data_Y))
