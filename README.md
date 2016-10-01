@@ -28,8 +28,6 @@ The features we use are as follows (also listed in `extract_features.py`):
 Kaggle offers a database of 25,000 FIDE chess games, each analyzed by Stockfish for 1 second per move; this yields on the order of 2 million positions (assuming 40 moves -- 80 plies -- per game) and their 'ground-truth' evalutions. We use this data to train our model.
 
 # Progress
-After around 2 hours of training, our current model gives a squared-error of 0.446 -- that is, between our function's output and Stockfish's ground-truth. On positions where the ground-truth evaluation is between 0.1 and 1, the squared-error is even lower at 0.167.
+After around 2 hours of training, our current model gives a squared-error of 0.446 -- that is, between our function's output and Stockfish's ground-truth. On positions where the ground-truth evaluation is between 0.1 and 1, the squared-error is even lower at 0.167. This makes the function more accurate than Stockfish's static evaluation function which yield a squared-error of >3 on the same data (>1 omitting outliers).
 
-The problem is that we don't know whether this is accurate enough. Using `PyChess` to extract the features is slow, so we can't use our evaluation function in an engine to test its performance. The next step in this project is to compare our function's performance with that of Stockfish's by evaluating the same positions in the dataset using Stockfish's function. This is annoying to do, because Stockfish's code is so technical. (See https://github.com/mcostalba/Stockfish.)
-
-If our function performs worse than or at a similar level to Stockfish's function, we need to get more data and/or train further. Otherwise if it performs better, we're done, and all we need to do is port `extract_features.py` to C++ to improve its performance so it can be used in an engine. (That's the goal, after all.)
+While this is encouraging, the function is still too slow to use in a Chess engine. The problem for now isn't even the evaluation speed of the neural net; it's the time it takes to extract the features.  The next step is to port `extract_features.py` to C++ and wrap it with a Python API .
